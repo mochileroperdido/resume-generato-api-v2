@@ -6,12 +6,14 @@ const Docxtemplater = require('docxtemplater');
 const fs = require('fs');
 const path = require('path');
 
+// Create router instead of app
+const router = express.Router();
 const app = express();
 
 // CORS configuration
 app.use(cors({
   origin: process.env.ALLOWED_ORIGIN || '*',
-  methods: 'POST',
+  methods: 'POST, OPTIONS',
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -21,8 +23,6 @@ app.use(express.json());
 // Helper function to load template
 function loadTemplate(templateId) {
   try {
-    // Get template path - in production, this would be more sophisticated
-    // For now, we'll use a simple mapping between IDs and filenames
     const templateMap = {
       'professional': 'professional-resume.docx',
       'creative': 'creative-resume.docx',
@@ -31,24 +31,22 @@ function loadTemplate(templateId) {
     };
     
     const templateName = templateMap[templateId] || templateMap.default;
-    const templatePath = path.resolve(__dirname, `../../templates/${templateName}`);
+    // Update path resolution to work with Netlify functions
+    const templatePath = path.join(__dirname, '..', '..', 'templates', templateName);
     
-    // Check if template exists
     if (!fs.existsSync(templatePath)) {
       throw new Error(`Template not found: ${templateName}`);
     }
     
-    // Read the template
-    const content = fs.readFileSync(templatePath, 'binary');
-    return content;
+    return fs.readFileSync(templatePath, 'binary');
   } catch (error) {
     console.error(`Error loading template: ${error.message}`);
     throw error;
   }
 }
 
-// Main endpoint to generate resume
-app.post('/generate-resume', async (req, res) => {
+// Main endpoint to generate resume - now using router
+router.post('/', async (req, res) => {
   try {
     const { templateId = 'default', userData } = req.body;
     
@@ -58,39 +56,29 @@ app.post('/generate-resume', async (req, res) => {
       });
     }
     
-    // Load template
     const templateContent = loadTemplate(templateId);
     
-    // Create a ZIP of the template
     const zip = new PizZip(templateContent);
     
-    // Create a new document
     const doc = new Docxtemplater(zip, {
       paragraphLoop: true,
       linebreaks: true
     });
     
-    // Set the data to inject
     doc.setData(userData);
-    
-    // Render the document
     doc.render();
     
-    // Get the binary content
     const buffer = doc.getZip().generate({
       type: 'nodebuffer',
       compression: 'DEFLATE'
     });
     
-    // Generate a filename
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `resume-${userData.name || 'document'}-${timestamp}.docx`;
     
-    // Set headers for file download
     res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     
-    // Send the document
     res.send(buffer);
     
   } catch (error) {
@@ -109,6 +97,14 @@ app.post('/generate-resume', async (req, res) => {
     });
   }
 });
+
+// Health check endpoint
+router.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+// Mount the router at the function path
+app.use('/.netlify/functions/generate-resume', router);
 
 // 404 handler for undefined routes
 app.use((req, res) => {
