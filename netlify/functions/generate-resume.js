@@ -62,11 +62,32 @@ router.post('/', async (req, res) => {
     
     const doc = new Docxtemplater(zip, {
       paragraphLoop: true,
-      linebreaks: true
+      linebreaks: true,
+      nullGetter() {
+        return '';
+      }
     });
     
-    doc.setData(userData);
-    doc.render();
+    // Log the data being passed to the template
+    console.log('Template data:', JSON.stringify(userData, null, 2));
+    
+    try {
+      doc.setData(userData);
+      doc.render();
+    } catch (error) {
+      console.error('Template processing error:', error);
+      
+      // Get more detailed error information
+      if (error.properties && error.properties.errors) {
+        const errorMessages = error.properties.errors.map(e => e.message).join(', ');
+        return res.status(500).json({
+          error: 'Template processing error',
+          message: errorMessages
+        });
+      }
+      
+      throw error;
+    }
     
     const buffer = doc.getZip().generate({
       type: 'nodebuffer',
@@ -93,7 +114,8 @@ router.post('/', async (req, res) => {
     
     return res.status(500).json({
       error: 'Error generating resume',
-      message: error.message
+      message: error.message,
+      details: error.properties || {}
     });
   }
 });
