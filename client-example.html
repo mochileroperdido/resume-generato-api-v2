@@ -169,6 +169,7 @@
         <h2>Template</h2>
         <label for="template">Choose a template:</label>
         <select id="template" name="templateId">
+          <option value="test">Test Template</option>
           <option value="default">Standard Resume</option>
           <option value="professional">Professional</option>
           <option value="creative">Creative</option>
@@ -264,7 +265,6 @@
         <button type="button" class="remove-entry" data-index="${index}">Remove</button>
       `;
       
-      // Add data entry to our form data
       formData.experience.push({
         title: '',
         company: '',
@@ -274,7 +274,6 @@
         description: ''
       });
       
-      // Add event listeners to input fields
       const inputs = entry.querySelectorAll('input, textarea');
       inputs.forEach(input => {
         input.addEventListener('input', (e) => {
@@ -283,13 +282,11 @@
         });
       });
       
-      // Add event listener to remove button
       entry.querySelector('.remove-entry').addEventListener('click', (e) => {
         const index = parseInt(e.target.getAttribute('data-index'));
         formData.experience.splice(index, 1);
         container.removeChild(entry);
         
-        // Update indices of remaining entries
         const entries = container.querySelectorAll('.experience-entry');
         entries.forEach((entry, i) => {
           entry.querySelector('.remove-entry').setAttribute('data-index', i);
@@ -322,7 +319,6 @@
         <button type="button" class="remove-entry" data-index="${index}">Remove</button>
       `;
       
-      // Add data entry to our form data
       formData.education.push({
         degree: '',
         institution: '',
@@ -330,7 +326,6 @@
         year: ''
       });
       
-      // Add event listeners to input fields
       const inputs = entry.querySelectorAll('input');
       inputs.forEach(input => {
         input.addEventListener('input', (e) => {
@@ -339,13 +334,11 @@
         });
       });
       
-      // Add event listener to remove button
       entry.querySelector('.remove-entry').addEventListener('click', (e) => {
         const index = parseInt(e.target.getAttribute('data-index'));
         formData.education.splice(index, 1);
         container.removeChild(entry);
         
-        // Update indices of remaining entries
         const entries = container.querySelectorAll('.education-entry');
         entries.forEach((entry, i) => {
           entry.querySelector('.remove-entry').setAttribute('data-index', i);
@@ -361,16 +354,13 @@
       const skill = skillInput.value.trim();
       
       if (skill && !formData.skills.includes(skill)) {
-        // Add to data store
         formData.skills.push(skill);
         
-        // Add to UI
         const skillsContainer = document.getElementById('skills-container');
         const skillTag = document.createElement('div');
         skillTag.className = 'skill-tag';
         skillTag.innerHTML = `<span>${skill}</span><button type="button" data-skill="${skill}">×</button>`;
         
-        // Add event listener to remove button
         skillTag.querySelector('button').addEventListener('click', (e) => {
           const skill = e.target.getAttribute('data-skill');
           const index = formData.skills.indexOf(skill);
@@ -385,7 +375,6 @@
       }
     });
     
-    // Add skill on Enter key press
     document.getElementById('skill-input').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -393,11 +382,9 @@
       }
     });
     
-    // Form submission
     document.getElementById('resume-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       
-      // Get basic form fields
       const name = document.getElementById('name').value;
       const email = document.getElementById('email').value;
       const phone = document.getElementById('phone').value;
@@ -406,7 +393,6 @@
       const summary = document.getElementById('summary').value;
       const templateId = document.getElementById('template').value;
       
-      // Prepare the complete user data
       const userData = {
         name,
         email,
@@ -419,12 +405,10 @@
         skills: formData.skills
       };
       
-      // Show loading spinner
       document.getElementById('loading').style.display = 'block';
       
       try {
-        // Call the resume generation API
-        const response = await fetch('https://your-netlify-site.netlify.app/api/generate-resume', {
+        const response = await fetch('/.netlify/functions/generate-resume', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -439,10 +423,7 @@
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        // Get the blob
         const blob = await response.blob();
-        
-        // Create download link
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -450,7 +431,6 @@
         document.body.appendChild(a);
         a.click();
         
-        // Clean up
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
         
@@ -458,7 +438,6 @@
         console.error('Error generating resume:', error);
         alert('Error generating resume. Please try again later.');
       } finally {
-        // Hide loading spinner
         document.getElementById('loading').style.display = 'none';
       }
     });

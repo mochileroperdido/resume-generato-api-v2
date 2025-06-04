@@ -6,7 +6,6 @@ const Docxtemplater = require('docxtemplater');
 const fs = require('fs');
 const path = require('path');
 
-// Create router instead of app
 const router = express.Router();
 const app = express();
 
@@ -17,37 +16,40 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Middleware to parse JSON bodies
 app.use(express.json());
 
-// Helper function to load template
 function loadTemplate(templateId) {
   try {
     const templateMap = {
       'professional': 'professional-resume.docx',
       'creative': 'creative-resume.docx',
       'academic': 'academic-resume.docx',
+      'test': 'test-resume.docx',
       'default': 'default-resume.docx'
     };
     
     const templateName = templateMap[templateId] || templateMap.default;
-    // Update path resolution to work with Netlify functions
     const templatePath = path.join(__dirname, '..', '..', 'templates', templateName);
     
+    console.log('Loading template from:', templatePath);
+    
     if (!fs.existsSync(templatePath)) {
+      console.error('Template not found at path:', templatePath);
       throw new Error(`Template not found: ${templateName}`);
     }
     
-    return fs.readFileSync(templatePath, 'binary');
+    const content = fs.readFileSync(templatePath, 'binary');
+    console.log('Template loaded, size:', content.length, 'bytes');
+    return content;
   } catch (error) {
     console.error(`Error loading template: ${error.message}`);
     throw error;
   }
 }
 
-// Main endpoint to generate resume - now using router
 router.post('/', async (req, res) => {
   try {
+    console.log('Received request with template ID:', req.body.templateId);
     const { templateId = 'default', userData } = req.body;
     
     if (!userData) {
@@ -57,6 +59,7 @@ router.post('/', async (req, res) => {
     }
     
     const templateContent = loadTemplate(templateId);
+    console.log('Template loaded successfully');
     
     const zip = new PizZip(templateContent);
     
@@ -68,16 +71,15 @@ router.post('/', async (req, res) => {
       }
     });
     
-    // Log the data being passed to the template
     console.log('Template data:', JSON.stringify(userData, null, 2));
     
     try {
       doc.setData(userData);
       doc.render();
+      console.log('Document rendered successfully');
     } catch (error) {
       console.error('Template processing error:', error);
       
-      // Get more detailed error information
       if (error.properties && error.properties.errors) {
         const errorMessages = error.properties.errors.map(e => e.message).join(', ');
         return res.status(500).json({
@@ -94,13 +96,17 @@ router.post('/', async (req, res) => {
       compression: 'DEFLATE'
     });
     
+    console.log('Generated buffer size:', buffer.length, 'bytes');
+    
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `resume-${userData.name || 'document'}-${timestamp}.docx`;
     
     res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Length', buffer.length);
     
     res.send(buffer);
+    console.log('Response sent successfully');
     
   } catch (error) {
     console.error(`Error generating resume: ${error.message}`);
@@ -120,15 +126,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Health check endpoint
-router.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
-
-// Mount the router at the function path
 app.use('/.netlify/functions/generate-resume', router);
 
-// 404 handler for undefined routes
 app.use((req, res) => {
   res.status(404).json({
     error: 'Not Found',
@@ -136,5 +135,4 @@ app.use((req, res) => {
   });
 });
 
-// Export the serverless function
 module.exports.handler = serverless(app);
