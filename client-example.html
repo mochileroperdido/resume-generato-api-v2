@@ -412,6 +412,7 @@
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
           },
           body: JSON.stringify({
             templateId,
@@ -424,7 +425,11 @@
         }
         
         const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
+        const docxBlob = new Blob([blob], { 
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        });
+        
+        const url = window.URL.createObjectURL(docxBlob);
         const a = document.createElement('a');
         a.href = url;
         a.download = `resume-${name.replace(/\s+/g, '-').toLowerCase()}.docx`;
