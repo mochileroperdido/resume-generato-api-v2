@@ -81,33 +81,32 @@ router.post('/', async (req, res) => {
     console.log('Template data:', JSON.stringify(userData, null, 2));
     
     try {
-      // Update to use the newer render method
-      doc.compile();
-      doc.resolveData(userData).then(() => {
-        doc.render();
-        console.log('Document rendered successfully');
-        
-        const buffer = doc.getZip().generate({
-          type: 'nodebuffer',
-          compression: 'DEFLATE',
-          compressionOptions: {
-            level: 9
-          }
-        });
-        
-        console.log('Generated buffer size:', buffer.length, 'bytes');
-        
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const filename = `resume-${userData.name || 'document'}-${timestamp}.docx`;
-        
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-        res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-        res.setHeader('Content-Length', buffer.length);
-        res.setHeader('Cache-Control', 'no-cache');
-        
-        res.send(buffer);
-        console.log('Response sent successfully');
+      // Use synchronous approach instead of deprecated methods
+      doc.setData(userData);
+      doc.render();
+      console.log('Document rendered successfully');
+      
+      const buffer = doc.getZip().generate({
+        type: 'nodebuffer',
+        compression: 'DEFLATE',
+        compressionOptions: {
+          level: 9
+        }
       });
+      
+      console.log('Generated buffer size:', buffer.length, 'bytes');
+      
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `resume-${userData.name || 'document'}-${timestamp}.docx`;
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+      res.setHeader('Content-Length', buffer.length);
+      res.setHeader('Cache-Control', 'no-cache');
+      
+      res.send(buffer);
+      console.log('Response sent successfully');
+      
     } catch (error) {
       console.error('Template processing error:', error);
       
