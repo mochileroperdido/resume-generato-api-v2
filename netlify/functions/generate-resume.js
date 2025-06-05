@@ -13,7 +13,7 @@ const app = express();
 app.use(cors({
   origin: process.env.ALLOWED_ORIGIN || '*',
   methods: 'POST, OPTIONS',
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
 app.use(express.json());
@@ -39,7 +39,7 @@ function loadTemplate(templateId) {
     }
     
     const content = fs.readFileSync(templatePath, 'binary');
-    console.log('Template loaded, size:', content.length, 'bytes');
+    console.log('Template loaded successfully, size:', content.length, 'bytes');
     return content;
   } catch (error) {
     console.error(`Error loading template: ${error.message}`);
@@ -61,7 +61,14 @@ router.post('/', async (req, res) => {
     const templateContent = loadTemplate(templateId);
     console.log('Template loaded successfully');
     
-    const zip = new PizZip(templateContent);
+    let zip;
+    try {
+      zip = new PizZip(templateContent);
+      console.log('Template ZIP created successfully');
+    } catch (error) {
+      console.error('Error creating ZIP:', error);
+      throw new Error('Failed to process template file');
+    }
     
     const doc = new Docxtemplater(zip, {
       paragraphLoop: true,
@@ -74,9 +81,33 @@ router.post('/', async (req, res) => {
     console.log('Template data:', JSON.stringify(userData, null, 2));
     
     try {
-      doc.setData(userData);
-      doc.render();
-      console.log('Document rendered successfully');
+      // Update to use the newer render method
+      doc.compile();
+      doc.resolveData(userData).then(() => {
+        doc.render();
+        console.log('Document rendered successfully');
+        
+        const buffer = doc.getZip().generate({
+          type: 'nodebuffer',
+          compression: 'DEFLATE',
+          compressionOptions: {
+            level: 9
+          }
+        });
+        
+        console.log('Generated buffer size:', buffer.length, 'bytes');
+        
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `resume-${userData.name || 'document'}-${timestamp}.docx`;
+        
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+        res.setHeader('Content-Length', buffer.length);
+        res.setHeader('Cache-Control', 'no-cache');
+        
+        res.send(buffer);
+        console.log('Response sent successfully');
+      });
     } catch (error) {
       console.error('Template processing error:', error);
       
@@ -90,23 +121,6 @@ router.post('/', async (req, res) => {
       
       throw error;
     }
-    
-    const buffer = doc.getZip().generate({
-      type: 'nodebuffer',
-      compression: 'DEFLATE'
-    });
-    
-    console.log('Generated buffer size:', buffer.length, 'bytes');
-    
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `resume-${userData.name || 'document'}-${timestamp}.docx`;
-    
-    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    res.setHeader('Content-Length', buffer.length);
-    
-    res.send(buffer);
-    console.log('Response sent successfully');
     
   } catch (error) {
     console.error(`Error generating resume: ${error.message}`);
