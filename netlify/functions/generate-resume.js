@@ -81,7 +81,6 @@ router.post('/', async (req, res) => {
     console.log('Template data:', JSON.stringify(userData, null, 2));
     
     try {
-      // Use synchronous approach instead of deprecated methods
       doc.setData(userData);
       doc.render();
       console.log('Document rendered successfully');

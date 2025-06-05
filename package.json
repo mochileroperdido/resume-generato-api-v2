@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "docxtemplater": "^3.37.12",
+    "docxtemplater": "^3.37.13",
     "express": "^4.18.2",
     "pizzip": "^3.1.4",
     "serverless-http": "^3.2.0",
