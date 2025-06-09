@@ -173,30 +173,27 @@ router.get('/debug/templates', (req, res) => {
 });
 
 /**
- * Test endpoint to download raw template file for debugging
+ * 🔍 Test route to return the raw test-resume.docx to debug Netlify binary streaming
  */
-router.get('/test-template/:templateId?', (req, res) => {
+router.get('/test-docx', (req, res) => {
+  const templatePath = path.join(__dirname, '..', '..', 'templates', 'test-resume.docx');
+
   try {
-    const templateId = req.params.templateId || 'test';
-    const templateContent = loadTemplate(templateId);
-    
-    const filename = `test-${templateId}-template.docx`;
-    
+    const buffer = fs.readFileSync(templatePath);
+
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', templateContent.length);
+    res.setHeader('Content-Disposition', 'attachment; filename="test-resume.docx"');
+    res.setHeader('Content-Length', buffer.length);
     res.setHeader('Cache-Control', 'no-cache');
-    
-    res.send(templateContent);
-    console.log('Test template sent successfully');
-  } catch (error) {
-    console.error('Error sending test template:', error);
-    res.status(500).json({ 
-      error: 'Failed to load template',
-      message: error.message 
-    });
+
+    res.end(buffer); // Use .end() for binary response
+    console.log('Test DOCX sent successfully');
+  } catch (err) {
+    console.error('Error sending test-resume.docx:', err);
+    res.status(500).json({ error: 'Failed to load test-resume.docx' });
   }
 });
+
 
 /**
  * Main resume generation endpoint
