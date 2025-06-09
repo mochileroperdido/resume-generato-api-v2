@@ -108,8 +108,9 @@ function generateDocument(templateContent, userData) {
 // test remove later
 
 /**
- * 🔍 Test route to return a static DOCX to debug binary file streaming in Netlify
- */router.get('/test-docx', (req, res) => {
+ * 🔍 Test route to return the raw test-resume.docx to debug Netlify binary streaming
+ */
+router.get('/test-docx', (req, res) => {
   const templatePath = path.join(__dirname, '..', '..', 'templates', 'test-resume.docx');
 
   try {
@@ -126,8 +127,6 @@ function generateDocument(templateContent, userData) {
     console.error('Error sending test-resume.docx:', err);
     res.status(500).json({ error: 'Failed to load test-resume.docx' });
   }
-});
-
 });
 
 // end of test
