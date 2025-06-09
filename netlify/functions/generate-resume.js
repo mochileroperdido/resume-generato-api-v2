@@ -12,14 +12,14 @@ const app = express();
 // CORS configuration
 app.use(cors({
   origin: process.env.ALLOWED_ORIGIN || '*',
-  methods: 'POST, OPTIONS',
+  methods: 'GET, POST, OPTIONS',
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
 app.use(express.json());
 
 /**
- * Load template file as Buffer to prevent corruption in serverless environments
+ * Load template file as Buffer from bundled templates
  * @param {string} templateId - The template identifier
  * @returns {Buffer} - Template content as Buffer
  */
@@ -34,16 +34,39 @@ function loadTemplate(templateId) {
     };
     
     const templateName = templateMap[templateId] || templateMap.default;
+    
+    // In Netlify Functions, bundled files are accessible from the function root
     const templatePath = path.join(__dirname, '..', '..', 'templates', templateName);
     
     console.log('Loading template from:', templatePath);
+    console.log('Current working directory:', process.cwd());
+    console.log('Function directory:', __dirname);
     
+    // Check if file exists
     if (!fs.existsSync(templatePath)) {
-      console.error('Template not found at path:', templatePath);
+      // Try alternative paths in case of different bundling structure
+      const altPath1 = path.join(process.cwd(), 'templates', templateName);
+      const altPath2 = path.join(__dirname, 'templates', templateName);
+      
+      console.log('Template not found at primary path, trying alternatives:');
+      console.log('Alt path 1:', altPath1, 'exists:', fs.existsSync(altPath1));
+      console.log('Alt path 2:', altPath2, 'exists:', fs.existsSync(altPath2));
+      
+      if (fs.existsSync(altPath1)) {
+        const content = fs.readFileSync(altPath1);
+        console.log('Template loaded from alt path 1, size:', content.length, 'bytes');
+        return content;
+      } else if (fs.existsSync(altPath2)) {
+        const content = fs.readFileSync(altPath2);
+        console.log('Template loaded from alt path 2, size:', content.length, 'bytes');
+        return content;
+      }
+      
+      console.error('Template not found at any path:', templateName);
       throw new Error(`Template not found: ${templateName}`);
     }
     
-    // Read as Buffer instead of binary string to prevent corruption
+    // Read as Buffer to prevent corruption in serverless environments
     const content = fs.readFileSync(templatePath);
     console.log('Template loaded successfully, size:', content.length, 'bytes');
     return content;
@@ -54,7 +77,7 @@ function loadTemplate(templateId) {
 }
 
 /**
- * Generate Word document from template and user data
+ * Generate Word document from template and user data using modern docxtemplater API
  * @param {Buffer} templateContent - Template content as Buffer
  * @param {Object} userData - User data to inject into template
  * @returns {Buffer} - Generated document buffer
@@ -66,13 +89,14 @@ function generateDocument(templateContent, userData) {
     console.log('Template ZIP created successfully');
     
     // Create Docxtemplater instance with data passed directly in constructor
+    // This avoids the deprecated setData() method
     const doc = new Docxtemplater(zip, {
       paragraphLoop: true,
       linebreaks: true,
       nullGetter() {
         return '';
       },
-      data: userData // Pass data directly to avoid deprecated setData method
+      data: userData // Modern API: pass data directly to constructor
     });
     
     console.log('Docxtemplater instance created with data');
@@ -81,7 +105,7 @@ function generateDocument(templateContent, userData) {
     doc.render();
     console.log('Document rendered successfully');
     
-    // Generate the final buffer
+    // Generate the final buffer with optimal compression
     const buffer = doc.getZip().generate({
       type: 'nodebuffer',
       compression: 'DEFLATE',
@@ -96,8 +120,11 @@ function generateDocument(templateContent, userData) {
   } catch (error) {
     console.error('Document generation error:', error);
     
+    // Handle docxtemplater-specific errors
     if (error.properties && error.properties.errors) {
-      const errorMessages = error.properties.errors.map(e => e.message).join(', ');
+      const errorMessages = error.properties.errors.map(e => 
+        `${e.message} (tag: ${e.properties?.id || 'unknown'})`
+      ).join(', ');
       throw new Error(`Template processing error: ${errorMessages}`);
     }
     
@@ -105,32 +132,75 @@ function generateDocument(templateContent, userData) {
   }
 }
 
-// test remove later
-
 /**
- * 🔍 Test route to return the raw test-resume.docx to debug Netlify binary streaming
+ * Debug endpoint to list available templates and their paths
  */
-router.get('/test-docx', (req, res) => {
-  const templatePath = path.join(__dirname, '..', '..', 'templates', 'test-resume.docx');
-
+router.get('/debug/templates', (req, res) => {
   try {
-    const buffer = fs.readFileSync(templatePath);
-
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    res.setHeader('Content-Disposition', 'attachment; filename="test-resume.docx"');
-    res.setHeader('Content-Length', buffer.length);
-    res.setHeader('Cache-Control', 'no-cache');
-
-    res.end(buffer); // Use .end() for binary response
-    console.log('Test DOCX sent successfully');
-  } catch (err) {
-    console.error('Error sending test-resume.docx:', err);
-    res.status(500).json({ error: 'Failed to load test-resume.docx' });
+    const templateDir = path.join(__dirname, '..', '..', 'templates');
+    const altDir1 = path.join(process.cwd(), 'templates');
+    const altDir2 = path.join(__dirname, 'templates');
+    
+    const debugInfo = {
+      currentWorkingDirectory: process.cwd(),
+      functionDirectory: __dirname,
+      templatePaths: {
+        primary: {
+          path: templateDir,
+          exists: fs.existsSync(templateDir),
+          files: fs.existsSync(templateDir) ? fs.readdirSync(templateDir) : []
+        },
+        alternative1: {
+          path: altDir1,
+          exists: fs.existsSync(altDir1),
+          files: fs.existsSync(altDir1) ? fs.readdirSync(altDir1) : []
+        },
+        alternative2: {
+          path: altDir2,
+          exists: fs.existsSync(altDir2),
+          files: fs.existsSync(altDir2) ? fs.readdirSync(altDir2) : []
+        }
+      }
+    };
+    
+    res.json(debugInfo);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Debug error',
+      message: error.message
+    });
   }
 });
 
-// end of test
+/**
+ * Test endpoint to download raw template file for debugging
+ */
+router.get('/test-template/:templateId?', (req, res) => {
+  try {
+    const templateId = req.params.templateId || 'test';
+    const templateContent = loadTemplate(templateId);
+    
+    const filename = `test-${templateId}-template.docx`;
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', templateContent.length);
+    res.setHeader('Cache-Control', 'no-cache');
+    
+    res.send(templateContent);
+    console.log('Test template sent successfully');
+  } catch (error) {
+    console.error('Error sending test template:', error);
+    res.status(500).json({ 
+      error: 'Failed to load template',
+      message: error.message 
+    });
+  }
+});
 
+/**
+ * Main resume generation endpoint
+ */
 router.post('/', async (req, res) => {
   try {
     console.log('Received request with template ID:', req.body.templateId);
@@ -148,15 +218,25 @@ router.post('/', async (req, res) => {
     const templateContent = loadTemplate(templateId);
     console.log('Template loaded successfully');
     
-    // Log the data being processed
-    console.log('Template data:', JSON.stringify(userData, null, 2));
+    // Log the data being processed (truncated for security)
+    const logData = {
+      ...userData,
+      // Truncate long descriptions for cleaner logs
+      experience: userData.experience?.map(exp => ({
+        ...exp,
+        description: exp.description?.length > 100 ? 
+          exp.description.substring(0, 100) + '...' : exp.description
+      }))
+    };
+    console.log('Template data:', JSON.stringify(logData, null, 2));
     
     // Generate the document
     const buffer = generateDocument(templateContent, userData);
     
     // Generate filename with timestamp
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `resume-${userData.name || 'document'}-${timestamp}.docx`;
+    const safeName = (userData.name || 'document').replace(/[^a-zA-Z0-9-_]/g, '-');
+    const filename = `resume-${safeName}-${timestamp}.docx`;
     
     // Set response headers for Word document download
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
@@ -186,11 +266,14 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Health check endpoint
+/**
+ * Health check endpoint
+ */
 router.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'ok',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
