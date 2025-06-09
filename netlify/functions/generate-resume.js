@@ -105,6 +105,36 @@ function generateDocument(templateContent, userData) {
   }
 }
 
+// test remove later
+
+/**
+ * 🔍 Test route to return a static DOCX to debug binary file streaming in Netlify
+ */
+router.get('/test-docx', (req, res) => {
+  const templatePath = path.join(__dirname, '..', '..', 'templates', 'test.docx');
+  
+  try {
+    const buffer = fs.readFileSync(templatePath);
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', 'attachment; filename="test.docx"');
+    res.setHeader('Content-Length', buffer.length);
+    res.setHeader('Cache-Control', 'no-cache');
+    
+    res.end(buffer); // ← use end() for raw binary
+    console.log('Test DOCX sent successfully');
+  } catch (err) {
+    console.error('Error sending test.docx:', err);
+    res.status(500).json({ error: 'Failed to load test.docx' });
+  }
+});
+
+router.post('/', async (req, res) => {
+  // ... your main resume generation logic ...
+});
+
+// end of test
+
 router.post('/', async (req, res) => {
   try {
     console.log('Received request with template ID:', req.body.templateId);
