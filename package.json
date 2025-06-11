@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "API for generating resumes from Word templates",
   "scripts": {
-    "start": "netlify dev",
-    "dev": "netlify dev"
+    "start": "vercel dev",
+    "dev": "vercel dev"
   },
   "dependencies": {
     "cors": "^2.8.5",
