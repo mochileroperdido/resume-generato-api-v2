@@ -7,7 +7,7 @@ This API service generates customized Word document resumes from templates. It a
 ## Base URL
 
 ```
-https://your-netlify-site.netlify.app/api
+https://your-vercel-site.vercel.app/api
 ```
 
 ## Authentication
