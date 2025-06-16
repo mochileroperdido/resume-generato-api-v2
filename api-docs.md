@@ -119,7 +119,7 @@ Error response body example:
 
 ```bash
 curl -X POST \
-  https://your-netlify-site.netlify.app/api/generate-resume \
+  https://your-vercel-site.vercel.app/api/generate-resume \
   -H 'Content-Type: application/json' \
   -d '{
     "templateId": "professional",
@@ -154,7 +154,7 @@ curl -X POST \
 
 ```javascript
 async function generateResume() {
-  const response = await fetch('https://your-netlify-site.netlify.app/api/generate-resume', {
+  const response = await fetch('https://your-vercel-site.vercel.app/api/generate-resume', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

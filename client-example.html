@@ -408,7 +408,7 @@
       document.getElementById('loading').style.display = 'block';
       
       try {
-        const response = await fetch('/.netlify/functions/generate-resume', {
+        const response = await fetch('/api/generate-resume', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -2,9 +2,15 @@
   "name": "resume-generator-api",
   "version": "1.0.0",
   "description": "API for generating resumes from Word templates",
+  "main": "index.js",
   "scripts": {
-    "start": "vercel dev",
-    "dev": "vercel dev"
+    "start": "node index.js",
+    "dev": "vercel dev",
+    "build": "echo 'No build step required for serverless functions'",
+    "test": "echo 'No tests specified' && exit 0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -13,5 +19,30 @@
     "pizzip": "^3.1.4",
     "serverless-http": "^3.2.0",
     "update-notifier": "^6.0.2"
+  },
+  "devDependencies": {
+    "@vercel/node": "^3.0.0"
+  },
+  "keywords": [
+    "resume",
+    "generator",
+    "api",
+    "docx",
+    "template",
+    "serverless",
+    "vercel"
+  ],
+  "author": "Resume Generator Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/resume-generator-api.git"
+  },
+  "vercel": {
+    "functions": {
+      "api/*.js": {
+        "maxDuration": 30
+      }
+    }
   }
 }

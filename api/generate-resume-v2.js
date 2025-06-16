@@ -35,8 +35,8 @@ function loadTemplate(templateId) {
     
     const templateName = templateMap[templateId] || templateMap.default;
     
-    // In Netlify Functions, bundled files are accessible from the function root
-    const templatePath = path.join(__dirname, '..', '..', 'templates', templateName);
+    // In Vercel, bundled files are accessible from the function root
+    const templatePath = path.join(__dirname, '..', 'templates', templateName);
     
     console.log('Loading template from:', templatePath);
     console.log('Current working directory:', process.cwd());
@@ -137,7 +137,7 @@ function generateDocument(templateContent, userData) {
  */
 router.get('/debug/templates', (req, res) => {
   try {
-    const templateDir = path.join(__dirname, '..', '..', 'templates');
+    const templateDir = path.join(__dirname, '..', 'templates');
     const altDir1 = path.join(process.cwd(), 'templates');
     const altDir2 = path.join(__dirname, 'templates');
     
@@ -173,10 +173,10 @@ router.get('/debug/templates', (req, res) => {
 });
 
 /**
- * 🔍 Test route to return the raw test-resume.docx to debug Netlify binary streaming
+ * Test route to return the raw test-resume.docx to debug Vercel binary streaming
  */
 router.get('/test-docx', (req, res) => {
-  const templatePath = path.join(__dirname, '..', '..', 'templates', 'test-resume.docx');
+  const templatePath = path.join(__dirname, '..', 'templates', 'test-resume.docx');
 
   try {
     const buffer = fs.readFileSync(templatePath);
@@ -193,7 +193,6 @@ router.get('/test-docx', (req, res) => {
     res.status(500).json({ error: 'Failed to load test-resume.docx' });
   }
 });
-
 
 /**
  * Main resume generation endpoint
@@ -274,7 +273,8 @@ router.get('/health', (req, res) => {
   });
 });
 
-app.use('/.netlify/functions/generate-resume', router);
+// Use router directly for Vercel
+app.use('/', router);
 
 // 404 handler for undefined routes
 app.use((req, res) => {
@@ -284,4 +284,4 @@ app.use((req, res) => {
   });
 });
 
-module.exports.handler = serverless(app);
+module.exports = serverless(app);
