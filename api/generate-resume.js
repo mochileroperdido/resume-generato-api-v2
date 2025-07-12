@@ -11,10 +11,7 @@ const path = require('path');
 function loadTemplate(templateId) {
   try {
     const templateMap = {
-      'professional': 'professional-resume.docx',
-      'creative': 'creative-resume.docx',
-      'academic': 'academic-resume.docx',
-      'test': 'test-resume.docx',
+      'minimalistic': 'minimalistic-resume.docx'
       'default': 'default-resume.docx'
     };
     
