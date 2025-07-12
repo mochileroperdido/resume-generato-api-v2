@@ -11,7 +11,7 @@ const path = require('path');
 function loadTemplate(templateId) {
   try {
     const templateMap = {
-      'minimalistic': 'minimalistic-resume.docx',
+     'minimalistic': 'minimalistic-resume.docx',
       'default': 'default-resume.docx'
     };
     
